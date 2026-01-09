@@ -1,0 +1,43 @@
+[Unit]
+Description=Samson SMS Daemon
+After=network.target dbus.service ModemManager.service
+Requires=dbus.service
+Wants=ModemManager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/samson
+Restart=always
+RestartSec=5
+
+# Environment variables
+Environment="DATABASE_PATH=/var/lib/samson/sms.db"
+Environment="API_HOST=127.0.0.1"
+Environment="API_PORT=3000"
+Environment="POLL_INTERVAL=1"
+Environment="RUST_LOG=info"
+
+# Security hardening
+User=samson
+Group=samson
+StateDirectory=samson
+StateDirectoryMode=0755
+
+# Sandboxing
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/samson
+
+# Capabilities
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# System call filtering
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
