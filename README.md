@@ -6,7 +6,7 @@ A Rust-based SMS polling daemon that integrates with ModemManager via D-Bus to c
 
 - **Automatic SMS Polling**: Continuously polls connected modems for new SMS messages
 - **Database Storage**: Stores SMS messages in SQLite with deduplication
-- **REST API**: Query messages by modem IMEI with optional timestamp filtering
+- **REST API**: Query messages by SIM IMSI with optional timestamp filtering
 - **Metrics Endpoint**: Prometheus-compatible metrics for monitoring
 - **Multi-Modem Support**: Handles multiple modems simultaneously
 - **D-Bus Integration**: Uses ModemManager for modem communication
@@ -62,14 +62,14 @@ METRICS_PORT=9091 \
 #### Get Messages
 
 ```
-GET /messages/{imei}?after={timestamp}
+GET /messages/{imsi}?after={timestamp}
 ```
 
-Retrieves SMS messages for a specific modem by IMEI.
+Retrieves SMS messages for a specific SIM card by IMSI.
 
 **Parameters:**
 
-- `imei` (path, required): Modem IMEI number
+- `imsi` (path, required): SIM card IMSI number
 - `after` (query, optional): RFC3339 timestamp to filter messages newer than this time
 
 **Response:**
@@ -88,7 +88,7 @@ Retrieves SMS messages for a specific modem by IMEI.
 }
 ```
 
-**Note:** The IMEI field is not included in the response as it's already specified in the URL path.
+**Note:** The IMSI field is not included in the response as it's already specified in the URL path.
 
 **Example:**
 
@@ -108,7 +108,7 @@ curl http://localhost:3000/messages/123456789012345?after=2026-01-09T00:00:00Z
 GET /modems
 ```
 
-Returns a list of all currently connected modems with their D-Bus paths and IMEI numbers (sorted by path).
+Returns a list of all currently connected modems with their D-Bus paths, IMEI and IMSI numbers (sorted by path).
 
 **Response:**
 
@@ -118,11 +118,13 @@ Returns a list of all currently connected modems with their D-Bus paths and IMEI
   "data": [
     {
       "path": "/org/freedesktop/ModemManager1/Modem/0",
-      "imei": "123456789012345"
+      "imei": "123456789012345",
+      "imsi": "310260123456789"
     },
     {
       "path": "/org/freedesktop/ModemManager1/Modem/1",
-      "imei": "987654321098765"
+      "imei": "987654321098765",
+      "imsi": "310260987654321"
     }
   ]
 }
@@ -172,7 +174,7 @@ All timestamps use RFC3339 format. The parser supports both standard format and 
 
 The daemon automatically prevents duplicate messages from being stored. Messages are considered duplicates if they have the same:
 
-- IMEI
+- IMSI
 - Sender
 - Text content
 - Timestamp

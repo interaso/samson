@@ -2,11 +2,11 @@ use crate::db::Database;
 use crate::modem::ModemManager;
 use crate::utils::parse_rfc3339_timestamp;
 use axum::{
+    Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json, Response},
     routing::get,
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -54,7 +54,10 @@ impl<T: Serialize> ApiResponse<T> {
         }
     }
 
-    pub fn error_with_status(error: String, status: StatusCode) -> (StatusCode, Json<ApiResponse<()>>) {
+    pub fn error_with_status(
+        error: String,
+        status: StatusCode,
+    ) -> (StatusCode, Json<ApiResponse<()>>) {
         (status, Json(ApiResponse::<()>::error(error)))
     }
 }
@@ -66,13 +69,10 @@ pub struct AppState {
 }
 
 pub fn create_router(db: Arc<Mutex<Database>>, modem_manager: Arc<ModemManager>) -> Router {
-    let state = AppState {
-        db,
-        modem_manager,
-    };
+    let state = AppState { db, modem_manager };
 
     Router::new()
-        .route("/messages/:imei", get(get_messages))
+        .route("/messages/:imsi", get(get_messages))
         .with_state(state)
 }
 
@@ -124,7 +124,7 @@ async fn get_metrics(State(state): State<AppState>) -> Response {
 
 async fn get_messages(
     State(state): State<AppState>,
-    Path(imei): Path<String>,
+    Path(imsi): Path<String>,
     Query(params): Query<MessageQuery>,
 ) -> Response {
     // Parse and validate 'after' timestamp parameter if provided
@@ -146,7 +146,7 @@ async fn get_messages(
     // Query database
     let messages = {
         let db = state.db.lock().await;
-        db.get_messages(Some(&imei), after)
+        db.get_messages(Some(&imsi), after)
     };
 
     match messages {

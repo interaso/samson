@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use tracing::warn;
-use zbus::{proxy, Connection};
+use zbus::{Connection, proxy};
 
 use crate::utils::parse_rfc3339_timestamp;
 
@@ -12,6 +12,9 @@ use crate::utils::parse_rfc3339_timestamp;
 trait Modem {
     #[zbus(property)]
     fn equipment_identifier(&self) -> zbus::Result<String>;
+
+    #[zbus(property)]
+    fn sim(&self) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 }
 
 #[proxy(
@@ -39,6 +42,15 @@ trait Sms {
 }
 
 #[proxy(
+    interface = "org.freedesktop.ModemManager1.Sim",
+    default_service = "org.freedesktop.ModemManager1"
+)]
+trait Sim {
+    #[zbus(property)]
+    fn sim_identifier(&self) -> zbus::Result<String>;
+}
+
+#[proxy(
     interface = "org.freedesktop.DBus.ObjectManager",
     default_service = "org.freedesktop.ModemManager1",
     default_path = "/org/freedesktop/ModemManager1"
@@ -61,6 +73,7 @@ trait ObjectManager {
 pub struct ModemInfo {
     pub path: String,
     pub imei: String,
+    pub imsi: String,
 }
 
 pub struct SmsInfo {
@@ -115,6 +128,17 @@ impl ModemManager {
             .context("Failed to create SMS proxy")
     }
 
+    async fn create_sim_proxy<'a>(
+        &'a self,
+        path: zbus::zvariant::OwnedObjectPath,
+    ) -> Result<SimProxy<'a>> {
+        SimProxy::builder(&self.conn)
+            .path(path)?
+            .build()
+            .await
+            .context("Failed to create SIM proxy")
+    }
+
     pub async fn get_modems(&self) -> Result<Vec<ModemInfo>> {
         let proxy = ObjectManagerProxy::new(&self.conn)
             .await
@@ -135,9 +159,18 @@ impl ModemManager {
                     .await
                     .context("Failed to get modem IMEI")?;
 
+                let sim_path = modem_proxy.sim().await.context("Failed to get SIM path")?;
+
+                let sim_proxy = self.create_sim_proxy(sim_path).await?;
+                let imsi = sim_proxy
+                    .sim_identifier()
+                    .await
+                    .context("Failed to get SIM IMSI")?;
+
                 modems.push(ModemInfo {
                     path: path.to_string(),
                     imei,
+                    imsi,
                 });
             }
         }

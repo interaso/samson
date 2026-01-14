@@ -49,7 +49,7 @@ impl SmsPoller {
         debug!(modem_count = modems.len(), "Polling modems");
 
         for modem in modems {
-            debug!(path = %modem.path, imei = %modem.imei, "Checking modem");
+            debug!(path = %modem.path, imei = %modem.imei, imsi = %modem.imsi, "Checking modem");
 
             match self.modem_manager.get_messages(&modem.path).await {
                 Ok(messages) => {
@@ -60,6 +60,7 @@ impl SmsPoller {
                     info!(
                         message_count = messages.len(),
                         imei = %modem.imei,
+                        imsi = %modem.imsi,
                         "Found messages on modem"
                     );
 
@@ -70,7 +71,7 @@ impl SmsPoller {
                     }
                 }
                 Err(e) => {
-                    error!(imei = %modem.imei, error = %e, "Failed to get messages from modem");
+                    error!(imei = %modem.imei, imsi = %modem.imsi, error = %e, "Failed to get messages from modem");
                 }
             }
         }
@@ -86,6 +87,7 @@ impl SmsPoller {
         let msg = SmsMessage {
             id: None,
             imei: modem.imei.clone(),
+            imsi: modem.imsi.clone(),
             sender: sms.sender.clone(),
             text: sms.text.clone(),
             timestamp: sms.timestamp,
