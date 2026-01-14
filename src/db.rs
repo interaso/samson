@@ -71,10 +71,10 @@ impl Database {
 
         let messages = stmt
             .query_map(param_refs.as_slice(), |row| {
-                let timestamp_str: String = row.get(4)?;
+                let timestamp_str: String = row.get(5)?;
                 let timestamp = parse_rfc3339_timestamp(&timestamp_str).map_err(|e| {
                     rusqlite::Error::FromSqlConversionFailure(
-                        4,
+                        5,
                         rusqlite::types::Type::Text,
                         Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, e)),
                     )
